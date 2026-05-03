@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FX Sessions — Forex Trading Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">FX Sessions</span>
+      <span class="brand-tag">Forex Tracker</span>
+    </div>
+    <div class="clock-wrap">
+      <div id="live-clock" class="live-clock">--:--:--</div>
+      <div class="clock-meta">
+        <span id="tz-pill" class="tz-pill" title="Open the Timezone section to change">GMT</span>
+        <span id="live-date" class="live-date">—</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="tz-section" aria-label="Timezone selector">
+      <div class="tz-section-head">
+        <div>
+          <h2 class="section-title">Timezone</h2>
+          <span class="section-sub">Pick your local GMT offset from the dropdown</span>
+        </div>
+        <div class="tz-display">
+          <span id="tz-offset-big" class="tz-offset-big">GMT+0</span>
+          <span id="tz-preview-clock" class="tz-preview-clock">--:--</span>
+        </div>
+      </div>
+      <div class="tz-dropdown-row">
+        <label for="tz-dropdown" class="tz-dropdown-label">GMT offset</label>
+        <select id="tz-dropdown" class="tz-dropdown" aria-label="GMT offset"></select>
+      </div>
+      <div class="tz-section-foot">
+        <button id="tz-auto-btn" class="tz-auto-btn" type="button">Auto-detect</button>
+        <span id="tz-auto-info" class="tz-auto-info"></span>
+      </div>
+    </section>
+
+    <section class="alerts-section" aria-label="Session alerts">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Alerts</h2>
+          <span class="section-sub">Optional — get a browser notification when sessions open or close</span>
+        </div>
+        <span id="alerts-status" class="alerts-status">Permission required</span>
+      </div>
+
+      <label class="alerts-master">
+        <input type="checkbox" id="alerts-enabled" />
+        <span class="alerts-master-track"><span class="alerts-master-thumb"></span></span>
+        <span class="alerts-master-text">Enable browser alerts</span>
+      </label>
+
+      <div class="alerts-row">
+        <span class="alerts-row-label">Trigger on</span>
+        <label class="alerts-check">
+          <input type="checkbox" id="alert-on-open" />
+          <span>Session OPENS</span>
+        </label>
+        <label class="alerts-check">
+          <input type="checkbox" id="alert-on-close" />
+          <span>Session CLOSES</span>
+        </label>
+      </div>
+
+      <div class="alerts-row">
+        <span class="alerts-row-label">Sessions</span>
+        <label class="alerts-check"><input type="checkbox" data-alert-session="sydney" /><span>🇦🇺 Sydney</span></label>
+        <label class="alerts-check"><input type="checkbox" data-alert-session="tokyo" /><span>🇯🇵 Tokyo</span></label>
+        <label class="alerts-check"><input type="checkbox" data-alert-session="london" /><span>🇬🇧 London</span></label>
+        <label class="alerts-check"><input type="checkbox" data-alert-session="newyork" /><span>🇺🇸 New York</span></label>
+      </div>
+
+      <div class="alerts-row alerts-row-actions">
+        <button id="alerts-test" class="alerts-test-btn" type="button">🔔 Send test notification</button>
+        <span class="alerts-hint">Alerts work even when this tab is in the background.</span>
+      </div>
+    </section>
+
+    <div id="market-banner" class="market-banner banner-closed">
+      <span class="banner-label">MARKET STATUS</span>
+      <span id="banner-state" class="banner-state">—</span>
+      <span id="banner-detail" class="banner-detail"></span>
+    </div>
+
+    <section class="sessions-section">
+      <div class="section-header">
+        <h2 class="section-title">Trading Sessions</h2>
+        <span class="section-sub">Real-time UTC → your local timezone</span>
+      </div>
+      <div id="sessions-grid" class="sessions-grid"></div>
+    </section>
+
+    <section class="overlap-section">
+      <div class="section-header">
+        <h2 class="section-title">Overlap Zone</h2>
+        <span class="section-sub">When two markets trade simultaneously — peak liquidity windows</span>
+      </div>
+      <div id="overlap-zone" class="overlap-zone"></div>
+    </section>
+
+    <section class="legend">
+      <h3 class="legend-title">Reference — Session Hours in Your Local Timezone</h3>
+      <ul id="legend-list" class="legend-list"></ul>
+      <p class="legend-note">★ Best window: <strong>London × New York</strong> overlap (13:00–17:00 UTC) — peak volatility &amp; volume.</p>
+      <p id="legend-tz-note" class="legend-tz-note">Detecting timezone…</p>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span>Built for traders · Data refreshes every second</span>
+    <span class="footer-meta">© FX Sessions Tracker</span>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
