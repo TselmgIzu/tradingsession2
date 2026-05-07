@@ -434,6 +434,10 @@ body {
   border-color: rgba(250, 204, 21, 0.5);
   box-shadow: 0 0 18px rgba(250, 204, 21, 0.18);
 }
+.session-card.is-lunch {
+  border-color: rgba(244, 114, 182, 0.45);
+  box-shadow: 0 0 18px rgba(244, 114, 182, 0.16);
+}
 .session-card.is-holiday {
   opacity: 0.85;
   border-color: rgba(251, 191, 36, 0.3);
@@ -513,6 +517,12 @@ body {
   border-color: rgba(139, 92, 246, 0.4);
 }
 .badge-weekend .dot { background: #a78bfa; }
+.badge-lunch {
+  background: rgba(244, 114, 182, 0.14);
+  color: #fbcfe8;
+  border-color: rgba(244, 114, 182, 0.45);
+}
+.badge-lunch .dot { background: #f472b6; }
 
 .dot.pulse {
   animation: livePulse 1.4s ease-in-out infinite;
@@ -586,7 +596,7 @@ body {
   flex-wrap: wrap;
   gap: 6px;
 }
-.tz-tag, .early-tag, .holiday-tag, .weekend-tag {
+.tz-tag, .early-tag, .holiday-tag, .weekend-tag, .lunch-tag {
   font-family: var(--mono);
   font-size: 10px;
   padding: 3px 8px;
@@ -598,6 +608,13 @@ body {
   background: rgba(139, 92, 246, 0.12);
   color: #ddd6fe;
   border: 1px solid rgba(139, 92, 246, 0.35);
+}
+.lunch-tag {
+  background: rgba(244, 114, 182, 0.1);
+  color: #fbcfe8;
+  border: 1px solid rgba(244, 114, 182, 0.3);
+  text-transform: none;
+  letter-spacing: 0.4px;
 }
 .tz-tag {
   background: rgba(255, 255, 255, 0.04);
@@ -727,6 +744,17 @@ body {
   color: var(--text);
   font-weight: 600;
   margin-right: 4px;
+}
+.legend-extra {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
 }
 .legend-note {
   margin-top: 14px;
