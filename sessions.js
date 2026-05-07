@@ -21,12 +21,15 @@ export const SESSIONS = [
     city: 'Tokyo',
     flag: '🇯🇵',
     icon: '🗾',
+    // TSE: 09:00 – 15:30 JST (UTC+9) = 00:00 – 06:30 UTC
     utcOpen: 0,
-    utcClose: 9,
+    utcClose: 6.5,
+    // TSE midday recess: 11:30–12:30 JST = 02:30–03:30 UTC
+    lunchBreak: { utcStart: 2.5, utcEnd: 3.5, label: '11:30–12:30 JST' },
     color: '#ef4444',     // red
     glowColor: 'rgba(239, 68, 68, 0.55)',
-    overlap: ['sydney', 'london'],
-    description: 'Most active Asian session. JPY pairs and Asian indices peak.'
+    overlap: ['sydney'],
+    description: 'TSE: 09:00 – 15:30 JST. JPY pairs and Asian indices peak.'
   },
   {
     key: 'london',
@@ -47,12 +50,13 @@ export const SESSIONS = [
     city: 'New York',
     flag: '🇺🇸',
     icon: '🗽',
-    utcOpen: 13,
-    utcClose: 22,
+    // NYSE: 9:30 AM – 4:00 PM ET. During EDT (UTC-4) → 13:30–20:00 UTC.
+    utcOpen: 13.5,
+    utcClose: 20,
     color: '#3b82f6',     // electric blue
     glowColor: 'rgba(59, 130, 246, 0.6)',
     overlap: ['london'],
-    description: 'High-volume Western session. USD pairs and equities most active.'
+    description: 'NYSE: 9:30 AM – 4:00 PM ET. USD pairs and equities most active.'
   }
 ];
 
@@ -63,24 +67,19 @@ export const SESSION_MAP = SESSIONS.reduce((acc, s) => {
 }, {});
 
 // Significant overlap zones (the most actively traded windows)
+// Note: with TSE closing 06:30 UTC and London opening 08:00 UTC, Tokyo × London
+// no longer overlap — there's a 1.5-hour quiet gap between them.
 export const OVERLAPS = [
   {
     sessions: ['sydney', 'tokyo'],
     utcStart: 0,
-    utcEnd: 7,
+    utcEnd: 6.5,
     label: 'Sydney × Tokyo',
     significance: 'Asian liquidity bridge — AUD/JPY and NZD/JPY most active.'
   },
   {
-    sessions: ['tokyo', 'london'],
-    utcStart: 8,
-    utcEnd: 9,
-    label: 'Tokyo × London',
-    significance: 'Brief 1-hour bridge — EUR/JPY breakouts common.'
-  },
-  {
     sessions: ['london', 'newyork'],
-    utcStart: 13,
+    utcStart: 13.5,
     utcEnd: 17,
     label: 'London × New York',
     significance: 'THE GOLDEN HOUR — peak volatility & volume. Best for major pairs.'
