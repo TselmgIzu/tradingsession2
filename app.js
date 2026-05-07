@@ -279,18 +279,24 @@ function maybeFireSessionAlerts(statuses) {
     return;
   }
 
+  // OPEN ↔ LUNCH transitions are not "real" open/close events
+  const isLiveStatus = st => st === 'OPEN' || st === 'LUNCH';
+
   for (const s of statuses) {
     const prev = prevSessionStatuses[s.key];
     if (prev !== undefined && prev !== s.status && alertPrefs.sessions[s.key]) {
-      // OPEN transition: anything → OPEN
-      if (s.status === 'OPEN' && prev !== 'OPEN' && alertPrefs.onOpen) {
+      const wasLive = isLiveStatus(prev);
+      const nowLive = isLiveStatus(s.status);
+
+      // OPEN transition: not-live → live
+      if (!wasLive && nowLive && alertPrefs.onOpen) {
         fireNotification(
           `${s.flag} ${s.name} — OPEN`,
           `${s.name} session has opened. Closes ${s.localCloseTime} ${formatOffsetLabel(USER_OFFSET_MIN)}.`
         );
       }
-      // CLOSE transition: OPEN → anything else
-      if (prev === 'OPEN' && s.status !== 'OPEN' && alertPrefs.onClose) {
+      // CLOSE transition: live → not-live
+      if (wasLive && !nowLive && alertPrefs.onClose) {
         fireNotification(
           `${s.flag} ${s.name} — CLOSED`,
           `${s.name} session has closed.`
@@ -490,6 +496,18 @@ function evaluateSession(sessionKey, now) {
     }
   }
 
+  // Lunch-break detection (only meaningful when session is currently open)
+  let onLunch = false;
+  let minutesUntilLunchEnd = null;
+  if (isOpen && def.lunchBreak) {
+    const lunchStart = dateAtUtc(todayDateStr, def.lunchBreak.utcStart);
+    const lunchEnd = dateAtUtc(todayDateStr, def.lunchBreak.utcEnd);
+    if (now >= lunchStart && now < lunchEnd) {
+      onLunch = true;
+      minutesUntilLunchEnd = (lunchEnd.getTime() - now.getTime()) / 60000;
+    }
+  }
+
   const minutesUntilOpen = openTimeMs != null && !isOpen
     ? (openTimeMs - now.getTime()) / 60000
     : null;
@@ -501,10 +519,13 @@ function evaluateSession(sessionKey, now) {
 
   return {
     isOpen,
+    onLunch,
     openingSoon,
     minutesUntilOpen,
     minutesUntilClose,
+    minutesUntilLunchEnd,
     todayHours,
+    lunchBreak: def.lunchBreak || null,
     closedAllDay: !!(todayHours && todayHours.closedAllDay)
   };
 }
@@ -514,6 +535,7 @@ export function getCurrentSessionStatus(now = new Date()) {
     const ev = evaluateSession(s.key, now);
     let status;
     if (ev.closedAllDay) status = 'HOLIDAY';
+    else if (ev.onLunch) status = 'LUNCH';
     else if (ev.isOpen) status = 'OPEN';
     else if (ev.openingSoon) status = 'OPENING_SOON';
     else status = 'CLOSED';
@@ -529,8 +551,12 @@ export function getCurrentSessionStatus(now = new Date()) {
       status,
       opensIn: ev.minutesUntilOpen,
       closesIn: ev.minutesUntilClose,
+      lunchBackIn: ev.minutesUntilLunchEnd,
+      lunchBreakLabel: ev.lunchBreak?.label || null,
       localOpenTime: ev.todayHours ? utcHourToLocalString(ev.todayHours.open) : '—',
       localCloseTime: ev.todayHours ? utcHourToLocalString(ev.todayHours.close) : '—',
+      localLunchStart: ev.lunchBreak ? utcHourToLocalString(ev.lunchBreak.utcStart) : null,
+      localLunchEnd: ev.lunchBreak ? utcHourToLocalString(ev.lunchBreak.utcEnd) : null,
       holidayName: ev.todayHours?.holiday || null,
       weekend: ev.todayHours?.weekend || false,
       earlyClose: ev.todayHours?.earlyClose || false
@@ -542,8 +568,11 @@ export function getCurrentSessionStatus(now = new Date()) {
 }
 
 export function getActiveOverlaps(statuses) {
-  const openKeys = new Set(statuses.filter(s => s.status === 'OPEN').map(s => s.key));
-  return OVERLAPS.filter(o => o.sessions.every(k => openKeys.has(k)))
+  // Treat OPEN and LUNCH as "in session" for overlap purposes
+  const liveKeys = new Set(
+    statuses.filter(s => s.status === 'OPEN' || s.status === 'LUNCH').map(s => s.key)
+  );
+  return OVERLAPS.filter(o => o.sessions.every(k => liveKeys.has(k)))
     .map(o => ({
       ...o,
       sessionDetails: o.sessions.map(k => SESSION_MAP[k])
@@ -592,8 +621,10 @@ function renderMarketBanner(statuses) {
   const detailEl = el('banner-detail');
   if (!banner || !stateEl || !detailEl) return;
 
+  // For banner purposes, treat OPEN and LUNCH as "in session"
+  const liveSessions = statuses.filter(s => s.status === 'OPEN' || s.status === 'LUNCH');
   const openSessions = statuses.filter(s => s.status === 'OPEN');
-  const allClosed = openSessions.length === 0;
+  const allClosed = liveSessions.length === 0;
   const allWeekend = allClosed && statuses.every(s => s.weekend);
   const allHoliday = allClosed && statuses.every(s => s.status === 'HOLIDAY' && !s.weekend);
 
@@ -605,10 +636,13 @@ function renderMarketBanner(statuses) {
     .sort((a, b) => a.opensIn - b.opensIn)[0];
   const nextStr = next ? `Next: ${next.flag} ${next.name} opens in ${formatCountdown(next.opensIn)}` : '';
 
-  if (openSessions.length > 0) {
+  if (liveSessions.length > 0) {
     stateEl.textContent = '🟢 OPEN';
-    const names = openSessions.map(s => s.name).join(' · ');
-    detailEl.textContent = `${names} ${openSessions.length > 1 ? 'sessions live' : 'session live'}`;
+    const parts = liveSessions.map(s =>
+      s.status === 'LUNCH' ? `${s.name} (🍱 lunch)` : s.name
+    );
+    const names = parts.join(' · ');
+    detailEl.textContent = `${names} ${liveSessions.length > 1 ? 'sessions live' : 'session live'}`;
     banner.classList.add('banner-open');
   } else if (allWeekend) {
     stateEl.textContent = '🛌 WEEKEND — CLOSED';
@@ -633,22 +667,29 @@ function renderSessions(statuses, now) {
 
   grid.innerHTML = statuses.map(s => {
     const statusBadge = badgeFor(s);
-    const countdown = s.status === 'OPEN'
-      ? `<span class="countdown-label">Closes in</span><span class="countdown-value">${formatCountdown(s.closesIn)}</span>`
-      : s.status === 'HOLIDAY'
-        ? `<span class="countdown-label">${s.weekend ? 'Weekend' : 'Status'}</span><span class="countdown-value muted">${s.weekend ? 'Reopens ' + formatCountdown(s.opensIn) : 'Closed all day'}</span>`
-        : `<span class="countdown-label">Opens in</span><span class="countdown-value">${formatCountdown(s.opensIn)}</span>`;
+    let countdown;
+    if (s.status === 'OPEN') {
+      countdown = `<span class="countdown-label">Closes in</span><span class="countdown-value">${formatCountdown(s.closesIn)}</span>`;
+    } else if (s.status === 'LUNCH') {
+      countdown = `<span class="countdown-label">🍱 Lunch · back in</span><span class="countdown-value">${formatCountdown(s.lunchBackIn)}</span>`;
+    } else if (s.status === 'HOLIDAY') {
+      countdown = `<span class="countdown-label">${s.weekend ? 'Weekend' : 'Status'}</span><span class="countdown-value muted">${s.weekend ? 'Reopens ' + formatCountdown(s.opensIn) : 'Closed all day'}</span>`;
+    } else {
+      countdown = `<span class="countdown-label">Opens in</span><span class="countdown-value">${formatCountdown(s.opensIn)}</span>`;
+    }
 
     const liveClass = s.status === 'OPEN' ? 'is-live' : '';
+    const lunchClass = s.status === 'LUNCH' ? 'is-lunch' : '';
     const soonClass = s.status === 'OPENING_SOON' ? 'is-soon' : '';
     const holidayClass = s.status === 'HOLIDAY' ? (s.weekend ? 'is-weekend' : 'is-holiday') : '';
 
     const earlyTag = s.earlyClose ? `<span class="early-tag">Early Close</span>` : '';
     const weekendTag = s.weekend ? `<span class="weekend-tag">Weekend</span>` : '';
     const holidayTag = (s.holidayName && !s.weekend) ? `<span class="holiday-tag">${s.holidayName}</span>` : '';
+    const lunchTag = s.lunchBreakLabel ? `<span class="lunch-tag" title="Daily midday recess">🍱 ${s.lunchBreakLabel}</span>` : '';
 
     return `
-      <article class="session-card ${liveClass} ${soonClass} ${holidayClass}" data-key="${s.key}"
+      <article class="session-card ${liveClass} ${lunchClass} ${soonClass} ${holidayClass}" data-key="${s.key}"
                style="--c:${s.color}; --glow:${s.glowColor};">
         <header class="session-head">
           <div class="session-title">
@@ -675,6 +716,7 @@ function renderSessions(statuses, now) {
           ${weekendTag}
           ${holidayTag}
           ${earlyTag}
+          ${lunchTag}
           <span class="tz-tag tz-tag-dynamic">${offsetLabel}</span>
         </div>
       </article>
@@ -686,6 +728,8 @@ function badgeFor(s) {
   switch (s.status) {
     case 'OPEN':
       return `<span class="badge badge-live"><span class="dot pulse"></span>LIVE</span>`;
+    case 'LUNCH':
+      return `<span class="badge badge-lunch"><span class="dot"></span>🍱 LUNCH</span>`;
     case 'OPENING_SOON':
       return `<span class="badge badge-soon"><span class="dot"></span>SOON</span>`;
     case 'HOLIDAY':
@@ -733,13 +777,22 @@ function renderLegend(now) {
     const close = utcHourToLocalString(s.utcClose);
     const overnight = s.utcClose <= s.utcOpen;
     const closeLabel = overnight ? `${close} (next day)` : close;
+    let extra = '';
+    if (s.lunchBreak) {
+      const lOpen = utcHourToLocalString(s.lunchBreak.utcStart);
+      const lClose = utcHourToLocalString(s.lunchBreak.utcEnd);
+      extra = ` <span class="legend-extra">🍱 lunch ${lOpen}–${lClose}</span>`;
+    }
+    if (s.key === 'newyork') {
+      extra += ` <span class="legend-extra">NYSE 9:30 ET</span>`;
+    }
     return `<li><span class="dot" style="background:${s.color}"></span>
-              <strong>${s.name}</strong> ${open} → ${closeLabel}</li>`;
+              <strong>${s.name}</strong> ${open} → ${closeLabel}${extra}</li>`;
   }).join('');
 
   const tzNote = el('legend-tz-note');
   if (tzNote) {
-    tzNote.textContent = `All times shown in ${formatOffsetLabel(USER_OFFSET_MIN)} (your selected timezone).`;
+    tzNote.textContent = `All times shown in ${formatOffsetLabel(USER_OFFSET_MIN)} (your selected timezone). NY hours are EDT-aligned.`;
   }
 }
 
