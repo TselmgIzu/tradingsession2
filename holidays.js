@@ -372,10 +372,10 @@ export function isSessionWeekend(sessionKey, dateString) {
  */
 export function getSessionHours(sessionKey, dateString) {
   const defaults = {
-    sydney:  { open: 22, close: 7 },
-    tokyo:   { open: 0,  close: 9 },
-    london:  { open: 8,  close: 17 },
-    newyork: { open: 13, close: 22 }
+    sydney:  { open: 22,   close: 7 },
+    tokyo:   { open: 0,    close: 6.5 }, // TSE 09:00 – 15:30 JST
+    london:  { open: 8,    close: 17 },
+    newyork: { open: 13.5, close: 20 }   // NYSE 9:30 ET → 4 PM ET (EDT-aligned)
   };
 
   const def = defaults[sessionKey];
